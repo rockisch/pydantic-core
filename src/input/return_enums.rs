@@ -1,3 +1,4 @@
+use ahash::AHashSet;
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::ops::Rem;
@@ -153,6 +154,7 @@ fn validate_iter_to_vec<'a, 's>(
     iter: impl Iterator<Item = PyResult<&'a (impl Input<'a> + 'a)>>,
     capacity: usize,
     mut max_length_check: MaxLengthCheck<'a, impl Input<'a>>,
+    unique: bool,
     validator: &'s CombinedValidator,
     extra: &Extra,
     definitions: &'a [CombinedValidator],
@@ -161,8 +163,8 @@ fn validate_iter_to_vec<'a, 's>(
     let mut output: Vec<PyObject> = Vec::with_capacity(capacity);
     let mut errors: Vec<ValLineError> = Vec::new();
     for (index, item_result) in iter.enumerate() {
-        let item = item_result.map_err(|e| any_next_error!(py, e, max_length_check.input, index))?;
-        match validator.validate(py, item, extra, definitions, recursion_guard) {
+        let item_input = item_result.map_err(|e| any_next_error!(py, e, max_length_check.input, index))?;
+        match validator.validate(py, item_input, extra, definitions, recursion_guard) {
             Ok(item) => {
                 max_length_check.incr()?;
                 output.push(item);
@@ -177,6 +179,16 @@ fn validate_iter_to_vec<'a, 's>(
     }
 
     if errors.is_empty() {
+        if unique {
+            let mut unique_set = AHashSet::with_capacity(capacity);
+            for item in &output {
+                let h = item.as_ref(py).hash()?;
+                unique_set.insert(h);
+            }
+            if unique_set.len() != output.len() {
+                return Err(ValError::new(ErrorType::NonUnique, max_length_check.input));
+            }
+        }
         Ok(output)
     } else {
         Err(ValError::LineErrors(errors))
@@ -316,6 +328,7 @@ impl<'a> GenericIterable<'a> {
         py: Python<'a>,
         input: &'a impl Input<'a>,
         max_length: Option<usize>,
+        unique: bool,
         field_type: &'static str,
         validator: &'s CombinedValidator,
         extra: &Extra,
@@ -328,12 +341,13 @@ impl<'a> GenericIterable<'a> {
         let max_length_check = MaxLengthCheck::new(max_length, field_type, input);
 
         macro_rules! validate {
-            ($iter:expr) => {
+            ($iter:expr, $unique:expr) => {
                 validate_iter_to_vec(
                     py,
                     $iter,
                     capacity,
                     max_length_check,
+                    $unique,
                     validator,
                     extra,
                     definitions,
@@ -343,14 +357,14 @@ impl<'a> GenericIterable<'a> {
         }
 
         match self {
-            GenericIterable::List(collection) => validate!(collection.iter().map(Ok)),
-            GenericIterable::Tuple(collection) => validate!(collection.iter().map(Ok)),
-            GenericIterable::Set(collection) => validate!(collection.iter().map(Ok)),
-            GenericIterable::FrozenSet(collection) => validate!(collection.iter().map(Ok)),
-            GenericIterable::Sequence(collection) => validate!(collection.iter()?),
-            GenericIterable::Iterator(collection) => validate!(collection.iter()?),
-            GenericIterable::JsonArray(collection) => validate!(collection.iter().map(Ok)),
-            other => validate!(other.as_sequence_iterator(py)?),
+            GenericIterable::List(collection) => validate!(collection.iter().map(Ok), unique),
+            GenericIterable::Tuple(collection) => validate!(collection.iter().map(Ok), unique),
+            GenericIterable::Set(collection) => validate!(collection.iter().map(Ok), false),
+            GenericIterable::FrozenSet(collection) => validate!(collection.iter().map(Ok), false),
+            GenericIterable::Sequence(collection) => validate!(collection.iter()?, unique),
+            GenericIterable::Iterator(collection) => validate!(collection.iter()?, unique),
+            GenericIterable::JsonArray(collection) => validate!(collection.iter().map(Ok), unique),
+            other => validate!(other.as_sequence_iterator(py)?, unique),
         }
     }
 

@@ -17,6 +17,7 @@ pub struct TupleVariableValidator {
     item_validator: Option<Box<CombinedValidator>>,
     min_length: Option<usize>,
     max_length: Option<usize>,
+    unique: bool,
     name: String,
 }
 
@@ -36,6 +37,7 @@ impl BuildValidator for TupleVariableValidator {
             item_validator,
             min_length: schema.get_as(intern!(py, "min_length"))?,
             max_length: schema.get_as(intern!(py, "max_length"))?,
+            unique: schema.get_as(pyo3::intern!(py, "unique"))?.unwrap_or(false),
             name,
         }
         .into())
@@ -60,6 +62,7 @@ impl Validator for TupleVariableValidator {
                 py,
                 input,
                 self.max_length,
+                self.unique,
                 "Tuple",
                 v,
                 extra,

@@ -14,6 +14,7 @@ pub struct ListValidator {
     item_validator: Option<Box<CombinedValidator>>,
     min_length: Option<usize>,
     max_length: Option<usize>,
+    unique: bool,
     name: String,
 }
 
@@ -104,6 +105,7 @@ impl BuildValidator for ListValidator {
             item_validator,
             min_length: schema.get_as(pyo3::intern!(py, "min_length"))?,
             max_length: schema.get_as(pyo3::intern!(py, "max_length"))?,
+            unique: schema.get_as(pyo3::intern!(py, "unique"))?.unwrap_or(false),
             name,
         }
         .into())
@@ -128,6 +130,7 @@ impl Validator for ListValidator {
                 py,
                 input,
                 self.max_length,
+                self.unique,
                 "List",
                 v,
                 extra,

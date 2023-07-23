@@ -1217,6 +1217,7 @@ class ListSchema(TypedDict, total=False):
     items_schema: CoreSchema
     min_length: int
     max_length: int
+    unique: bool
     strict: bool
     ref: str
     metadata: Any
@@ -1324,6 +1325,7 @@ class TupleVariableSchema(TypedDict, total=False):
     items_schema: CoreSchema
     min_length: int
     max_length: int
+    unique: bool
     strict: bool
     ref: str
     metadata: Any
