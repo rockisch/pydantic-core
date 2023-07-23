@@ -139,6 +139,9 @@ pub enum ErrorType {
         actual_length: usize,
     },
     // ---------------------
+    // generic collection uniqueness error
+    NonUnique,
+    // ---------------------
     // generic collection and iteration errors
     IterableType,
     IterationError {
@@ -490,6 +493,7 @@ impl ErrorType {
             Self::FiniteNumber => "Input should be a finite number",
             Self::TooShort {..} => "{field_type} should have at least {min_length} item{expected_plural} after validation, not {actual_length}",
             Self::TooLong {..} => "{field_type} should have at most {max_length} item{expected_plural} after validation, not {actual_length}",
+            Self::NonUnique => "Input should be unique, but an item appeared more than once",
             Self::IterableType => "Input should be iterable",
             Self::IterationError {..} => "Error iterating over object, error: {error}",
             Self::StringType => "Input should be a valid string",

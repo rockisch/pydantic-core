@@ -1379,6 +1379,7 @@ class SetSchema(TypedDict, total=False):
     items_schema: CoreSchema
     min_length: int
     max_length: int
+    unique: bool
     strict: bool
     ref: str
     metadata: Any
@@ -1434,6 +1435,7 @@ class FrozenSetSchema(TypedDict, total=False):
     items_schema: CoreSchema
     min_length: int
     max_length: int
+    unique: bool
     strict: bool
     ref: str
     metadata: Any
@@ -3815,6 +3817,7 @@ ErrorType = Literal[
     'finite_number',
     'too_short',
     'too_long',
+    'non_unique',
     'iterable_type',
     'iteration_error',
     'string_type',
